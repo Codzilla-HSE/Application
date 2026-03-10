@@ -15,8 +15,13 @@ services:
       - postgres
       - judge0-server
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/codzilla
-      JUDGE0_URL: http://judge0-server:2358
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/codzilla
+      DB_USERNAME: user
+      DB_PASSWORD: password
+      POLYGON_KEY: ${POLYGON_KEY}
+      POLYGON_SECRET: ${POLYGON_SECRET}
+      JUDGE0_BASE_URL: http://judge0-server:2358
 
   frontend:
     build: ./frontend
