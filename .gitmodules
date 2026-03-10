@@ -1,6 +1,9 @@
-    [submodule "backend"]
-	path = backend
-	url = https://github.com/Codzilla-HSE/backend
+[submodule "backend"]
+    path = backend
+    url = https://github.com/Codzilla-HSE/backend
+    branch = feature/sandbox
+
 [submodule "frontend"]
-	path = frontend
-	url = https://github.com/Codzilla-HSE/frontend
+    path = frontend
+    url = https://github.com/Codzilla-HSE/frontend
+    branch = dockerfile
