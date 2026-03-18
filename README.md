@@ -22,6 +22,7 @@
 3. Для проверки синтаксиса локально:
     ```bash
     sudo nginx -t -p . -c nginx.conf
+    ```
     Вы должны увидеть:
     ```bash
     nginx: the configuration file ./nginx.conf syntax is ok
