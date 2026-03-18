@@ -1,0 +1,111 @@
+x-logging:
+  &default-logging
+  logging:
+    driver: json-file
+    options:
+      max-size: 100M
+
+services:
+
+  backend:
+    build: ./backend
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+      - judge0-server
+      - kafka
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://postgres:5432/codzilla
+      DB_USERNAME: user
+      DB_PASSWORD: password
+      POLYGON_KEY: ${POLYGON_KEY}
+      POLYGON_SECRET: ${POLYGON_SECRET}
+      JUDGE0_BASE_URL: http://judge0-server:2358
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: codzilla
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - app-data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    <<: *default-logging
+    restart: always
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    <<: *default-logging
+    restart: always
+
+  judge0-server:
+    image: judge0/judge0:latest
+    volumes:
+      - ./judge0/judge0.conf:/judge0.conf:ro
+    ports:
+      - "2358:2358"
+    privileged: true
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    <<: *default-logging
+    restart: always
+
+  judge0-worker:
+    image: judge0/judge0:latest
+    command: ["./scripts/workers"]
+    volumes:
+      - ./judge0/judge0.conf:/judge0.conf:ro
+    privileged: true
+    depends_on:
+      - judge0-db
+      - judge0-redis
+    <<: *default-logging
+    restart: always
+
+  judge0-db:
+    image: postgres:16.2
+    env_file: ./judge0/judge0.conf
+    volumes:
+      - judge0-data:/var/lib/postgresql/data/
+    <<: *default-logging
+    restart: always
+
+  judge0-redis:
+    image: redis:7.2.4
+    command: [
+      "bash", "-c",
+      'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"'
+    ]
+    env_file: ./judge0/judge0.conf
+    <<: *default-logging
+    restart: always
+
+volumes:
+  app-data:
+  judge0-data:
