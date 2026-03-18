@@ -14,6 +14,7 @@ services:
     depends_on:
       - postgres
       - judge0-server
+      - kafka
     environment:
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/codzilla
@@ -22,6 +23,7 @@ services:
       POLYGON_KEY: ${POLYGON_KEY}
       POLYGON_SECRET: ${POLYGON_SECRET}
       JUDGE0_BASE_URL: http://judge0-server:2358
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
 
   frontend:
     build: ./frontend
@@ -38,6 +40,28 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - app-data:/var/lib/postgresql/data
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    <<: *default-logging
+    restart: always
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    <<: *default-logging
+    restart: always
 
   judge0-server:
     image: judge0/judge0:latest
