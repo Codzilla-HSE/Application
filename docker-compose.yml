@@ -67,6 +67,9 @@ services:
 
   judge0-server:
     image: judge0/judge0:latest
+    environment:
+      - TMPDIR=/tmp
+      - JUDGE0_DISABLE_ISOLATE=1
     volumes:
       - ./judge0/judge0.conf:/judge0.conf:ro
     ports:
@@ -80,6 +83,9 @@ services:
 
   judge0-worker:
     image: judge0/judge0:latest
+    environment:
+      - TMPDIR=/tmp
+      - JUDGE0_DISABLE_ISOLATE=1
     command: ["./scripts/workers"]
     volumes:
       - ./judge0/judge0.conf:/judge0.conf:ro
