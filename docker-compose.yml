@@ -16,7 +16,7 @@ services:
       - judge0-server
       - kafka
     environment:
-      SPRING_PROFILES_ACTIVE: prod
+#      SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/codzilla
       DB_USERNAME: user
       DB_PASSWORD: password
