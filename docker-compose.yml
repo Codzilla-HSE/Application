@@ -15,20 +15,21 @@ services:
       - postgres
       - judge0-server
       - kafka
+      - minio                      
     environment:
-#      SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/codzilla
-      S3_ACCESS_KEY: minio-user
-      S3_PASSWORD: minio-password
-      S3_REGION: us-east-1
-      S3_BUCKET_NAME: codzilla
-      POLYGON_API_URL: https://polygon.codeforces.com/api/
       DB_USERNAME: user
       DB_PASSWORD: password
       POLYGON_KEY: ${POLYGON_KEY}
       POLYGON_SECRET: ${POLYGON_SECRET}
+      POLYGON_API_URL: https://polygon.codeforces.com/api/
       JUDGE0_BASE_URL: http://judge0-server:2358
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: minio-user
+      S3_PASSWORD: minio-password
+      S3_REGION: us-east-1
+      S3_BUCKET_NAME: codzilla
 
   frontend:
     build: ./frontend
@@ -119,6 +120,22 @@ services:
     <<: *default-logging
     restart: always
 
+
+  minio:
+    image: minio/minio
+    container_name: codzilla-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minio-user
+      MINIO_ROOT_PASSWORD: minio-password
+    command: server /data --console-address ":9001"
+    volumes:
+      - minio-data:/data
+    restart: always
+
 volumes:
   app-data:
   judge0-data:
+  minio-data:
