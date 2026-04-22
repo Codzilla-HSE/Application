@@ -1,1 +1,4 @@
 .idea
+# .gitignore
+infra/nginx/logs/*.log
+infra/nginx/logs/*.pid
