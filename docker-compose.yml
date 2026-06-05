@@ -15,14 +15,20 @@ services:
       - postgres
       - judge0-server
       - kafka
-      - minio                      
+      - minio
+      - artefactik0          # ← добавили
+      - sqlservice           # ← добавили
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/codzilla
       DB_USERNAME: user
       DB_PASSWORD: password
-      POLYGON_KEY: ${POLYGON_KEY}
-      POLYGON_SECRET: ${POLYGON_SECRET}
-      POLYGON_API_URL: https://polygon.codeforces.com/api/
+      # УДАЛЕНО:
+      # POLYGON_KEY: ${POLYGON_KEY}
+      # POLYGON_SECRET: ${POLYGON_SECRET}
+      # POLYGON_API_URL: https://polygon.codeforces.com/api/
+      # ДОБАВЛЕНО:
+      ARTEFACTIK0_BASE_URL: http://artefactik0:8081
+      SQLSERVICE_BASE_URL: http://sqlservice:8080
       JUDGE0_BASE_URL: http://judge0-server:2358
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       S3_ENDPOINT: http://minio:9000
@@ -49,6 +55,64 @@ services:
     volumes:
       - app-data:/var/lib/postgresql/data
 
+  # ---------- Базы данных для Artefactik0 и SqlService ----------
+  postgres-artefactik:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: artefactikdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - artefactik-data:/var/lib/postgresql/data
+    restart: always
+
+  postgres-sql:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: sqlservicedb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+    volumes:
+      - sqlservice-data:/var/lib/postgresql/data
+    restart: always
+
+  # ---------- Artefactik0 ----------
+  artefactik0:
+    build: ../artefactik0                     # путь к папке с Dockerfile
+    ports:
+      - "8081:8081"                           # внешний порт 8081 → контейнер 8081
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-artefactik:5432/artefactikdb
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minio-user           # совпадает с MINIO_ROOT_USER из общего minio
+      MINIO_SECRET_KEY: minio-password
+    depends_on:
+      - postgres-artefactik
+      - minio
+    restart: always
+
+  # ---------- SqlService ----------
+  sqlservice:
+    build: ../sqlservice
+    ports:
+      - "8082:8080"                           # внешний порт 8082 → контейнер 8080 (как в sqlservice)
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-sql:5432/sqlservicedb
+      SPRING_DATASOURCE_USERNAME: user
+      SPRING_DATASOURCE_PASSWORD: password
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      MINIO_URL: http://minio:9000
+      MINIO_ACCESS_KEY: minio-user
+      MINIO_SECRET_KEY: minio-password
+    depends_on:
+      - postgres-sql
+      - kafka
+      - minio
+    restart: always
+
+  # Остальное без изменений
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     environment:
@@ -120,7 +184,6 @@ services:
     <<: *default-logging
     restart: always
 
-
   minio:
     image: minio/minio
     container_name: codzilla-minio
@@ -139,3 +202,5 @@ volumes:
   app-data:
   judge0-data:
   minio-data:
+  artefactik-data:     # ← новый
+  sqlservice-data:     # ← новый
