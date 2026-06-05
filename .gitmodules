@@ -7,3 +7,11 @@
     path = frontend
     url = https://github.com/Codzilla-HSE/frontend
     branch = main
+
+[submodule "artefactik0"]
+    path = ../artefactik0
+    url = https://github.com/Spelaya-melon-X/Artefactik0
+
+[submodule "sqlservice"]
+    path = ../sqlservice
+    url = https://github.com/Codzilla-HSE/SqlService
