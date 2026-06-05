@@ -1,7 +1,7 @@
 [submodule "backend"]
     path = backend
     url = https://github.com/Codzilla-HSE/backend
-    branch = edit_configs
+    branch = main
 
 [submodule "frontend"]
     path = frontend
