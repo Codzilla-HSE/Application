@@ -1,3 +1,5 @@
+# Application/docker-compose.yml
+
 x-logging:
   &default-logging
   logging:
@@ -7,6 +9,7 @@ x-logging:
 
 services:
 
+  # ─── Backend ───────────────────────────────────────────────────
   backend:
     build: ./backend
     ports:
@@ -21,16 +24,19 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/codzilla
       DB_USERNAME: user
       DB_PASSWORD: password
-      ARTEFACTIK0_BASE_URL: http://artefactik0:8081
-      SQLSERVICE_BASE_URL: http://sqlservice:8080
-      JUDGE0_BASE_URL: https://ce.judge0.com
+      JUDGE0_BASE_URL: http://judge0-server:2358
       KAFKA_BOOTSTRAP_SERVERS: kafka:9092
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: minio-user
       S3_PASSWORD: minio-password
       S3_REGION: us-east-1
       S3_BUCKET_NAME: codzilla
+      ARTEFACTIK0_BASE_URL: http://artefactik0:8081
+      SQLSERVICE_BASE_URL: http://sqlservice:8082
+    <<: *default-logging
+    restart: always
 
+  # ─── Frontend ──────────────────────────────────────────────────
   frontend:
     build: ./frontend
     ports:
@@ -38,8 +44,9 @@ services:
     depends_on:
       - backend
     volumes:
-      - ./infra/nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
 
+  # ─── Backend DB ────────────────────────────────────────────────
   postgres:
     image: postgres:15
     environment:
@@ -48,17 +55,25 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - app-data:/var/lib/postgresql/data
+    restart: always
 
+  # ─── Artefactik0 DB ────────────────────────────────────────────
   postgres-artefactik:
     image: postgres:15
     environment:
-      POSTGRES_DB: artefactikdb
+      POSTGRES_DB: artefaktikdb
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
     volumes:
       - artefactik-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d artefaktikdb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 
+  # ─── SqlService DB ─────────────────────────────────────────────
   postgres-sql:
     image: postgres:15
     environment:
@@ -67,28 +82,37 @@ services:
       POSTGRES_PASSWORD: password
     volumes:
       - sqlservice-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d sqlservicedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: always
 
+  # ─── Artefactik0 ───────────────────────────────────────────────
   artefactik0:
     build: ./services/artefactik0
     ports:
-      - "8081:8081"
+      - "8081:8080"    # сервис слушает 8080 внутри, снаружи 8081
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-artefactik:5432/artefactikdb
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-artefactik:5432/artefaktikdb
       SPRING_DATASOURCE_USERNAME: user
       SPRING_DATASOURCE_PASSWORD: password
       MINIO_URL: http://minio:9000
       MINIO_ACCESS_KEY: minio-user
       MINIO_SECRET_KEY: minio-password
     depends_on:
-      - postgres-artefactik
-      - minio
+      postgres-artefactik:
+        condition: service_healthy
+      minio:
+        condition: service_started
     restart: always
 
+  # ─── SqlService ────────────────────────────────────────────────
   sqlservice:
     build: ./services/sqlservice
     ports:
-      - "8082:8080"
+      - "8082:8080"          # SqlService слушает 8082 внутри контейнера
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-sql:5432/sqlservicedb
       SPRING_DATASOURCE_USERNAME: user
@@ -98,11 +122,15 @@ services:
       MINIO_ACCESS_KEY: minio-user
       MINIO_SECRET_KEY: minio-password
     depends_on:
-      - postgres-sql
-      - kafka
-      - minio
+      postgres-sql:
+        condition: service_healthy
+      kafka:
+        condition: service_started
+      minio:
+        condition: service_started
     restart: always
 
+  # ─── Kafka ─────────────────────────────────────────────────────
   zookeeper:
     image: confluentinc/cp-zookeeper:7.5.0
     environment:
@@ -124,10 +152,60 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     <<: *default-logging
     restart: always
+#
+#  # ─── Judge0 ────────────────────────────────────────────────────
+#  judge0-server:
+#    image: judge0/judge0:latest
+#    environment:
+#      - TMPDIR=/tmp
+#      - JUDGE0_DISABLE_ISOLATE=1
+#    volumes:
+#      - ./judge0/judge0.conf:/judge0.conf:ro
+#    ports:
+#      - "2358:2358"
+#    privileged: true
+#    depends_on:
+#      - judge0-db
+#      - judge0-redis
+#    <<: *default-logging
+#    restart: always
+#
+#  judge0-worker:
+#    image: judge0/judge0:latest
+#    environment:
+#      - TMPDIR=/tmp
+#      - JUDGE0_DISABLE_ISOLATE=1
+#    command: ["./scripts/workers"]
+#    volumes:
+#      - ./judge0/judge0.conf:/judge0.conf:ro
+#    privileged: true
+#    depends_on:
+#      - judge0-db
+#      - judge0-redis
+#    <<: *default-logging
+#    restart: always
+#
+#  judge0-db:
+#    image: postgres:16.2
+#    env_file: ./judge0/judge0.conf
+#    volumes:
+#      - judge0-data:/var/lib/postgresql/data/
+#    <<: *default-logging
+#    restart: always
+#
+#  judge0-redis:
+#    image: redis:7.2.4
+#    command: [
+#      "bash", "-c",
+#      'docker-entrypoint.sh --appendonly no --requirepass "$$REDIS_PASSWORD"'
+#    ]
+#    env_file: ./judge0/judge0.conf
+#    <<: *default-logging
+#    restart: always
 
+  # ─── MinIO ─────────────────────────────────────────────────────
   minio:
     image: minio/minio
-    container_name: codzilla-minio
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -139,22 +217,25 @@ services:
       - minio-data:/data
     restart: always
 
+  # Создаёт бакеты при первом запуске
   minio-init:
     image: minio/mc:latest
     depends_on:
-      minio:
-        condition: service_started
+      - minio
     entrypoint: >
       /bin/sh -c "
+        sleep 5;
         mc alias set local http://minio:9000 minio-user minio-password;
-        mc mb --ignore-existing local/artefactik0;
+        mc mb --ignore-existing local/codzilla;
+        mc mb --ignore-existing local/artefaktik0;
         mc mb --ignore-existing local/sqlservice-tasks;
-        echo 'Buckets created';
+        echo 'All buckets ready';
       "
     restart: on-failure
 
 volumes:
   app-data:
+  judge0-data:
   minio-data:
   artefactik-data:
   sqlservice-data:
