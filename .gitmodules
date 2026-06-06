@@ -1,7 +1,7 @@
 [submodule "backend"]
     path = backend
     url = https://github.com/Codzilla-HSE/backend
-    branch = main
+    branch = judge_service
 
 [submodule "frontend"]
     path = frontend
