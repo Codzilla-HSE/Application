@@ -1,12 +1,12 @@
 [submodule "backend"]
     path = backend
     url = https://github.com/Codzilla-HSE/backend
-    branch = judge_service
+    branch = after-match
 
 [submodule "frontend"]
     path = frontend
     url = https://github.com/Codzilla-HSE/frontend
-    branch = main
+    branch = after-match
 
 [submodule "services/artefactik0"]
 	path = services/artefactik0
