@@ -1,12 +1,12 @@
 [submodule "backend"]
     path = backend
     url = https://github.com/Codzilla-HSE/backend
-    branch = main
+    branch = send-submissions-by-websocket
 
 [submodule "frontend"]
     path = frontend
     url = https://github.com/Codzilla-HSE/frontend
-    branch = main
+    branch = get-submissions-by-websocket
 
 [submodule "services/artefactik0"]
 	path = services/artefactik0
